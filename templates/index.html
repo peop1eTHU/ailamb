@@ -3,29 +3,80 @@
 <head>
     <title>树莓派摄像头控制</title>
     <style>
-        /* 样式同上一个方案，略作简化 */
-        .container { max-width: 800px; margin: 0 auto; text-align: center; }
-        #videoStream { width: 100%; border: 2px solid #333; }
-        .button { padding: 10px 20px; margin: 10px; background: #4CAF50; color: white; border: none; cursor: pointer; }
-        .button:hover { background: #45a049; }
-        #snapshotImage { max-width: 100%; margin-top: 20px; }
+        body {
+            display: flex;
+            margin: 0;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .left-panel {
+            flex: 3;
+            margin-right: 20px;
+        }
+        .right-panel {
+            flex: 1;
+            min-width: 300px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #videoStream {
+            width: 100%;
+            height: auto;
+            border: 2px solid #333;
+            background: #000;
+        }
+        .button {
+            padding: 10px 20px;
+            margin: 10px 5px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .button:hover {
+            background: #45a049;
+        }
+        .snapshot-list {
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .snapshot-item {
+            margin: 10px 0;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .snapshot-item:hover {
+            transform: scale(1.05);
+        }
+        .snapshot-item img {
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- 实时视频流（直接嵌入MJPG-Streamer的流） -->
-        <img id="videoStream" src="{{ MJPG_STREAMER_URL }}/?action=stream">
-        
-        <!-- 操作按钮 -->
-        <button class="button" onclick="captureSnapshot()">拍照</button>
-        <button class="button" onclick="downloadLatest()">下载最新图片</button>
-        
-        <!-- 快照预览 -->
-        <img id="snapshotImage" src="#" alt="快照预览">
+    <!-- 左侧：视频和操作按钮 -->
+    <div class="left-panel">
+        <img id="videoStream" src="http://192.168.3.62:8080/?action=stream">
+        <div>
+            <button class="button" onclick="captureSnapshot()">拍照</button>
+            <button class="button" onclick="downloadPDF()">生成PDF</button>
+        </div>
+        <img id="latestSnapshot" src="#" alt="最新快照" style="display: none;">
+    </div>
+
+    <!-- 右侧：快照列表 -->
+    <div class="right-panel">
+        <h3>已拍摄的快照</h3>
+        <div class="snapshot-list" id="snapshotList"></div>
     </div>
 
     <script>
-        let latestFilename = null;
+        let snapshots = [];  // 存储当前会话中的所有快照文件名
 
         // 拍照功能
         async function captureSnapshot() {
@@ -34,10 +85,8 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    // 显示最新快照
-                    const imageUrl = `/static/snapshots/${data.filename}`;
-                    document.getElementById('snapshotImage').src = imageUrl;
-                    latestFilename = data.filename;
+                    snapshots.push(data.filename);
+                    updateSnapshotList();
                 } else {
                     alert(`拍照失败: ${data.error}`);
                 }
@@ -46,13 +95,53 @@
             }
         }
 
-        // 下载功能
-        function downloadLatest() {
-            if (!latestFilename) {
+        // 更新右侧列表
+        function updateSnapshotList() {
+            const list = document.getElementById('snapshotList');
+            list.innerHTML = snapshots.map(filename => `
+                <div class="snapshot-item" onclick="previewSnapshot('${filename}')">
+                    <img src="/static/snapshots/${filename}" alt="${filename}">
+                </div>
+            `).join('');
+        }
+
+        // 预览单张快照
+        function previewSnapshot(filename) {
+            document.getElementById('latestSnapshot').src = `/static/snapshots/${filename}`;
+            document.getElementById('latestSnapshot').style.display = 'block';
+        }
+
+        // 生成PDF
+        async function downloadPDF() {
+            if (snapshots.length === 0) {
                 alert('请先拍照！');
                 return;
             }
-            window.location.href = `/download/${latestFilename}`;
+
+            try {
+                const response = await fetch('/generate_pdf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filenames: snapshots })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || '生成PDF失败');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'snapshots.pdf';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            } catch (error) {
+                alert('PDF下载失败: ' + error.message);
+            }
         }
     </script>
 </body>
