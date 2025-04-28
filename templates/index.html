@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>树莓派摄像头控制</title>
+    <style>
+        /* 样式同上一个方案，略作简化 */
+        .container { max-width: 800px; margin: 0 auto; text-align: center; }
+        #videoStream { width: 100%; border: 2px solid #333; }
+        .button { padding: 10px 20px; margin: 10px; background: #4CAF50; color: white; border: none; cursor: pointer; }
+        .button:hover { background: #45a049; }
+        #snapshotImage { max-width: 100%; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 实时视频流（直接嵌入MJPG-Streamer的流） -->
+        <img id="videoStream" src="{{ MJPG_STREAMER_URL }}/?action=stream">
+        
+        <!-- 操作按钮 -->
+        <button class="button" onclick="captureSnapshot()">拍照</button>
+        <button class="button" onclick="downloadLatest()">下载最新图片</button>
+        
+        <!-- 快照预览 -->
+        <img id="snapshotImage" src="#" alt="快照预览">
+    </div>
+
+    <script>
+        let latestFilename = null;
+
+        // 拍照功能
+        async function captureSnapshot() {
+            try {
+                const response = await fetch('/capture', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 显示最新快照
+                    const imageUrl = `/static/snapshots/${data.filename}`;
+                    document.getElementById('snapshotImage').src = imageUrl;
+                    latestFilename = data.filename;
+                } else {
+                    alert(`拍照失败: ${data.error}`);
+                }
+            } catch (error) {
+                alert('请求失败: ' + error.message);
+            }
+        }
+
+        // 下载功能
+        function downloadLatest() {
+            if (!latestFilename) {
+                alert('请先拍照！');
+                return;
+            }
+            window.location.href = `/download/${latestFilename}`;
+        }
+    </script>
+</body>
+</html>
