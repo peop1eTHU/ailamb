@@ -5,10 +5,14 @@ import requests
 from fpdf import FPDF
 from threading import Thread
 import time
+from scripts.led import init_animation_thread,operate_led
+import pygame
 
 app = Flask(__name__)
 app.config['SNAPSHOT_FOLDER'] = 'static/snapshots'
 os.makedirs(app.config['SNAPSHOT_FOLDER'], exist_ok=True)
+
+pygame.mixer.init()
 
 # 自动清理旧快照（后台线程）
 def clean_old_snapshots():
@@ -21,6 +25,8 @@ def clean_old_snapshots():
                 os.remove(filepath)
 
 Thread(target=clean_old_snapshots, daemon=True).start()
+
+init_animation_thread()
 
 @app.route('/')
 def index():
@@ -75,6 +81,26 @@ def generate_pdf():
     except Exception as e:
         return jsonify(success=False, error=str(e))
     
+@app.route('/toggle_led', methods=['POST'])
+def toggle_led():
+    """控制 LED 开关的 API"""
+    try:
+        state = request.json.get('state', 'off')
+        operate_led(state)
+        return jsonify(success=True)
+    except Exception as e:
+        return jsonify(success=False, error=str(e))
+
+@app.route('/play_timer_start', methods=['POST'])
+def play_start():
+    pygame.mixer.music.load("static/sounds/timer_start.mp3")
+    pygame.mixer.music.play()
+
+@app.route('/play_timer_end', methods=['POST'])
+def play_end():
+    pygame.mixer.music.load("static/sounds/timer_end.mp3")
+    pygame.mixer.music.play()
+
 if __name__ == '__main__':
     # 启动 Flask 服务器（端口 5000）
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)

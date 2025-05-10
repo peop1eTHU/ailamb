@@ -1,25 +1,25 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>树莓派摄像头控制</title>
+    <title>光语伴学</title>
     <style>
         body {
-            display: flex;
+            display: block; /* 取消 flex 布局 */
             margin: 0;
             padding: 20px;
             background: #f0f0f0;
         }
+        .left-panel, .right-panel {
+            max-width: none; /* 取消宽度限制 */
+        }
         .left-panel {
-            flex: 3;
-            margin-right: 20px;
+            float: left;
+            width: 70%;
+            padding-right: 20px;
         }
         .right-panel {
-            flex: 1;
-            min-width: 300px;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            float: left;
+            width: 25%;
         }
         #videoStream {
             width: 100%;
@@ -56,24 +56,90 @@
             border: 1px solid #ddd;
             border-radius: 4px;
         }
+        .tab-nav {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #ddd;
+        }
+        .tab-button {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            color: #666;
+            transition: all 0s;
+        }
+        .tab-button.active {
+            color: #4CAF50;
+            border-bottom: 3px solid #4CAF50;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
-    <!-- 左侧：视频和操作按钮 -->
-    <div class="left-panel">
-        <img id="videoStream" src="http://192.168.3.62:8080/?action=stream">
-        <div>
-            <button class="button" onclick="captureSnapshot()">拍照</button>
-            <button class="button" onclick="downloadPDF()">生成PDF</button>
-        </div>
-        <img id="latestSnapshot" src="#" alt="最新快照" style="display: none;">
+    <!-- 选项卡导航 -->
+    <div class="tab-nav">
+        <button id="camerabut" class="tab-button active" onclick="switchTab('camera')">摄像头控制</button>
+        <button id="ledbut" class="tab-button" onclick="switchTab('led')">LED 控制</button>
     </div>
 
-    <!-- 右侧：快照列表 -->
-    <div class="right-panel">
-        <h3>已拍摄的快照</h3>
-        <div class="snapshot-list" id="snapshotList"></div>
+    <!-- 分页内容 -->
+    <div id="cameraTab" class="tab-content active">
+        <!-- 原有摄像头控制内容 -->
+        <div class="left-panel">
+            <img id="videoStream" src="http://192.168.3.62:8080/?action=stream">
+            <div>
+                <button class="button" onclick="captureSnapshot()">拍照</button>
+                <button class="button" onclick="downloadPDF()">生成PDF</button>
+            </div>
+            <img id="latestSnapshot" src="#" alt="最新快照" style="display: none;">
+        </div>
+        <div class="right-panel">
+            <h3>已拍摄的快照</h3>
+            <div class="snapshot-list" id="snapshotList"></div>
+        </div>
     </div>
+
+    <div id="ledTab" class="tab-content">
+        <!-- 新增 LED 控制内容 -->
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2>LED 倒计时控制</h2>
+            <input type="number" id="timerDuration" placeholder="输入倒计时（秒）" min="1" style="padding: 8px; width: 200px;">
+            <button class="button" onclick="startTimer()">开始倒计时</button>
+            <div id="timerDisplay" style="margin: 15px 0; font-size: 24px; color: #333;">00:00</div>
+            <button class="button" onclick="manualToggleLed()">重置</button>
+        </div>
+    </div>
+
+    <script>
+        // 新增分页切换逻辑
+        function switchTab(tabName) {
+            // 隐藏所有分页内容
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            // 移除所有按钮激活状态
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            // 显示目标分页并激活按钮
+            document.getElementById(`${tabName}Tab`).classList.add('active');
+            document.getElementById(`${tabName}but`).classList.add('active');
+            localStorage.setItem('lastActiveTab', tabName);
+        }
+
+        // 页面加载时恢复
+        window.onload = () => {
+            const lastTab = localStorage.getItem('lastActiveTab') || 'camera';
+            switchTab(lastTab);
+        };
+    </script>
 
     <script>
         let snapshots = [];  // 存储当前会话中的所有快照文件名
@@ -142,6 +208,110 @@
             } catch (error) {
                 alert('PDF下载失败: ' + error.message);
             }
+        }
+    </script>
+
+    <script>
+        // 全局变量
+        let timerInterval = null;
+        let remainingSeconds = 0;
+
+        // 开始倒计时
+        function startTimer() {
+            const duration = parseInt(document.getElementById('timerDuration').value);
+            if (isNaN(duration) || duration < 1) {
+                alert('请输入有效的秒数！');
+                return;
+            }
+
+            ledOff();
+            playStart();
+
+            // 清除旧计时器
+            if (timerInterval) clearInterval(timerInterval);
+
+            remainingSeconds = duration;
+            updateTimerDisplay();
+
+            // 启动前端倒计时显示
+            timerInterval = setInterval(() => {
+                remainingSeconds--;
+                updateTimerDisplay();
+                if (remainingSeconds <= 0) {
+                    clearInterval(timerInterval);
+                    ledOn();
+                    playEnd();
+                }
+            }, 1000);
+        }
+
+        // 更新倒计时显示
+        function updateTimerDisplay() {
+            const minutes = Math.floor(remainingSeconds / 60).toString().padStart(2, '0');
+            const seconds = (remainingSeconds % 60).toString().padStart(2, '0');
+            document.getElementById('timerDisplay').textContent = `${minutes}:${seconds}`;
+        }
+
+        function playStart(){
+            fetch('/play_timer_start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ })
+            }).then(response => response.json())
+            .then(data => {
+                if (!data.success) alert('播放失败: ' + data.error);
+            });
+        }
+        function playEnd(){
+            fetch('/play_timer_end', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ })
+            }).then(response => response.json())
+            .then(data => {
+                if (!data.success) alert('播放失败: ' + data.error);
+            });
+        }
+
+        function ledOff() {
+            fetch('/toggle_led', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ state: 'off' })
+            }).then(response => response.json())
+            .then(data => {
+                if (!data.success) alert('开灯失败: ' + data.error);
+            });
+        }
+
+        // 倒计时结束后触发开灯
+        function ledOn() {
+            fetch('/toggle_led', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ state: 'on' })
+            }).then(response => response.json())
+            .then(data => {
+                if (!data.success) alert('开灯失败: ' + data.error);
+            });
+        }
+
+        // 重置
+        function manualToggleLed() {
+            // const isOn = document.getElementById('timerDisplay').textContent !== '00:00';
+            fetch('/toggle_led', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                // body: JSON.stringify({ state: isOn ? 'off' : 'on' })
+                body: JSON.stringify({ state: 'off' })
+            }).then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // alert(`灯已${isOn ? '关闭' : '打开'}`);
+                } else {
+                    alert('操作失败: ' + data.error);
+                }
+            });
         }
     </script>
 </body>
