@@ -9,7 +9,10 @@ from scripts.led import init_animation_thread,operate_led
 import pygame
 import threading
 from queue import Queue
+from PIL import Image
 from apscheduler.schedulers.background import BackgroundScheduler
+from io import BytesIO
+
 
 app = Flask(__name__)
 app.config['SNAPSHOT_FOLDER'] = 'static/snapshots'
@@ -42,12 +45,14 @@ def capture_snapshot():
         if response.status_code != 200:
             return jsonify(success=False, error="无法获取摄像头数据")
 
+        img = Image.open(BytesIO(response.content))
+        rotated_img = img.rotate(-90, expand=True)
+
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"snapshot_{timestamp}.jpg"
         save_path = os.path.join(app.config['SNAPSHOT_FOLDER'], filename)
 
-        with open(save_path, 'wb') as f:
-            f.write(response.content)
+        rotated_img.save(save_path)
 
         return jsonify(success=True, filename=filename)
     except Exception as e:

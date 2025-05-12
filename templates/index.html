@@ -27,6 +27,25 @@
             border: 2px solid #333;
             background: #000;
         }
+
+        /* 竖屏展示样式
+        .vertical-container {
+        width: 480px;
+        height: 720px;
+        margin: 0 auto;
+        overflow: hidden;
+        border: 2px solid #333;
+        } */
+
+        #videoStream {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;  /* 保持比例填充容器 */
+        
+        /* 如果摄像头无法硬件旋转，添加CSS旋转 */
+        /* transform: rotate(90deg);
+        transform-origin: center center; */
+        }
         .button {
             padding: 10px 20px;
             margin: 10px 5px;
@@ -277,7 +296,7 @@
 <body>
     <!-- 选项卡导航 -->
     <div class="tab-nav">
-        <button id="camerabut" class="tab-button active" onclick="switchTab('camera')">摄像头控制</button>
+        <button id="camerabut" class="tab-button active" onclick="switchTab('camera')">拍摄作业</button>
         <button id="homeworkbut" class="tab-button" onclick="switchTab('homework')">作业提交</button>
         <button id="ledbut" class="tab-button" onclick="switchTab('led')">倒计时</button>
         <button id="pomodorobut" class="tab-button" onclick="switchTab('pomodoro')">番茄时钟</button>    
@@ -289,7 +308,9 @@
     <div id="cameraTab" class="tab-content active">
         <!-- 原有摄像头控制内容 -->
         <div class="left-panel">
-            <img id="videoStream" src="http://192.168.3.62:8080/?action=stream">
+            <!-- <div class="vertical-container"> -->
+                <img id="videoStream" src="http://192.168.3.62:8080/?action=stream">
+            <!-- </div> -->
             <div>
                 <button class="button" onclick="captureSnapshot()">拍照</button>
                 <button class="button" onclick="downloadPDF()">生成PDF</button>
