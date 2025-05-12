@@ -153,15 +153,136 @@
             background: #e0f0ff;
         }
     </style>
+    <style>
+        .study-container {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+        }
+        .study-control-panel {
+            flex: 1;
+            min-width: 300px;
+            max-width: 300px;
+        }
+        .status-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .interval-control {
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        .photo-item {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        .photo-item:hover {
+            transform: translateY(-5px);
+        }
+        .photo-item img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+        }
+        .photo-date {
+            position: absolute;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            width: 100%;
+            padding: 5px;
+            font-size: 12px;
+        }
+    </style>
+    <style>
+        .pomodoro-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .status-card {
+            background: #fff;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .time-display {
+            font-size: 72px;
+            font-weight: bold;
+            color: #e74c3c;
+            margin: 20px 0;
+        }
+        .phase-indicator {
+            font-size: 24px;
+            color: #2ecc71;
+            margin-bottom: 15px;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            color: #7f8c8d;
+        }
+        .pomo-btn {
+            padding: 12px 30px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 25px;
+            background: #3498db;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .pomo-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+        }
+        .settings-panel {
+            margin-top: 30px;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .setting-item {
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .setting-item input {
+            padding: 8px;
+            width: 80px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
 
 </head>
 <body>
     <!-- 选项卡导航 -->
     <div class="tab-nav">
         <button id="camerabut" class="tab-button active" onclick="switchTab('camera')">摄像头控制</button>
-        <button id="ledbut" class="tab-button" onclick="switchTab('led')">LED 控制</button>
         <button id="homeworkbut" class="tab-button" onclick="switchTab('homework')">作业提交</button>
-        <button id="musicbut"class="tab-button" onclick="switchTab('music')">音乐播放</button>
+        <button id="ledbut" class="tab-button" onclick="switchTab('led')">倒计时</button>
+        <button id="pomodorobut" class="tab-button" onclick="switchTab('pomodoro')">番茄时钟</button>    
+        <button id="musicbut" class="tab-button" onclick="switchTab('music')">音乐播放</button>
+        <button id="studybut" class="tab-button" onclick="switchTab('study')">学习记录</button>
     </div>
 
     <!-- 分页内容 -->
@@ -181,10 +302,46 @@
         </div>
     </div>
 
+    <!-- 番茄时钟页面 -->
+    <div id="pomodoroTab" class="tab-content">
+        <div class="pomodoro-container">
+            <!-- 状态显示 -->
+            <div class="status-card">
+                <div class="time-display" id="timeDisplay">25:00</div>
+                <div class="phase-indicator" id="phaseIndicator">准备开始</div>
+                <div class="stats">
+                    <span>已完成番茄: <span id="tomatoCount">0</span></span>
+                    <span>当前周期: <span id="cycleCount">0</span></span>
+                </div>
+            </div>
+
+            <!-- 控制面板 -->
+            <div class="control-panel">
+                <button class="pomo-btn" onclick="controlPomodoro('start')" id="startBtn">开始</button>
+                <button class="pomo-btn" onclick="controlPomodoro('pause')">暂停</button>
+                <button class="pomo-btn" onclick="controlPomodoro('reset')">重置</button>
+            </div>
+
+            <!-- 设置面板 -->
+            <div class="settings-panel">
+                <h3>⚙️ 时间设置</h3>
+                <div class="setting-item">
+                    <label>专注时长（分钟）</label>
+                    <input type="number" id="workTime" value="25" min="1">
+                </div>
+                <div class="setting-item">
+                    <label>休息时长（分钟）</label>
+                    <input type="number" id="breakTime" value="5" min="1">
+                </div>
+                <button class="button" onclick="saveSettings()">保存设置</button>
+            </div>
+        </div>
+    </div>
+
     <div id="ledTab" class="tab-content">
         <!-- 新增 LED 控制内容 -->
         <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2>LED 倒计时控制</h2>
+            <h2>倒计时</h2>
             <input type="number" id="timerDuration" placeholder="输入倒计时（秒）" min="1" style="padding: 8px; width: 200px;">
             <button class="button" onclick="startTimer()">开始倒计时</button>
             <div id="timerDisplay" style="margin: 15px 0; font-size: 24px; color: #333;">00:00</div>
@@ -243,6 +400,34 @@
             <div class="playlist">
                 <h3>服务器音乐列表</h3>
                 <div id="musicList"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="studyTab" class="tab-content">
+        <div class="study-container">
+            <!-- 控制面板 -->
+            <div class="study-control-panel">
+                <div class="status-card">
+                    <h3>定时拍照状态：<span id="captureStatus">已停止</span></h3>
+                    <div class="interval-control">
+                        <input type="number" id="intervalInput" 
+                            min="1" value="5" style="width: 80px;">
+                        <span>分钟间隔</span>
+                        <button class="button" onclick="setsetInterval()">设置</button>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="button" onclick="toggleCapture()" 
+                                id="toggleBtn">开启定时</button>
+                        <button class="button" onclick="captureNow()">立即拍照</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 照片展示区 -->
+            <div class="photo-gallery">
+                <h3>学习记录照片</h3>
+                <div id="photoGrid" class="photo-grid"></div>
             </div>
         </div>
     </div>
@@ -540,6 +725,174 @@
                 alert('请求失败: ' + error.message);
             }
         }
+    </script>
+
+    <script>
+        // 初始化加载照片
+        loadStudyPhotos();
+        setInterval(loadStudyPhotos, 5000); // 每5秒刷新
+
+        // 加载照片列表
+        async function loadStudyPhotos() {
+            try {
+                const response = await fetch('/study/photos');
+                const data = await response.json();
+                if (data.success) {
+                    renderPhotos(data.photos);
+                }
+            } catch (error) {
+                console.error('加载失败:', error);
+            }
+        }
+
+        // 渲染照片网格
+        function renderPhotos(photos) {
+            const container = document.getElementById('photoGrid');
+            container.innerHTML = photos.map(photo => `
+                <div class="photo-item">
+                    <img src="/static/study_records/${photo}" 
+                        onclick="showFullImage('${photo}')">
+                    <div class="photo-date">
+                        ${parseDateFromFilename(photo)}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 解析文件名中的时间戳
+        function parseDateFromFilename(filename) {
+            const ts = filename.split('_')[1];
+            const year = ts.slice(0,4);
+            const month = ts.slice(4,6);
+            const day = ts.slice(6,8);
+            const time = ts.slice(9,15).replace(/(..)/g, '$1:').slice(0,-1);
+            return `${year}-${month}-${day} ${time}`;
+        }
+
+        // 设置间隔时间
+        async function setsetInterval() {
+            const interval = document.getElementById('intervalInput').value;
+            const response = await fetch('/study/control', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    action: 'set_interval',
+                    interval: parseInt(interval)
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                alert('间隔时间设置成功');
+            } else {
+                alert('设置失败: ' + data.error);
+            }
+        }
+
+        // 切换定时状态
+        async function toggleCapture() {
+            const response = await fetch('/study/control', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ action: 'toggle_capture' })
+            });
+            const data = await response.json();
+            if (data.success) {
+                const btn = document.getElementById('toggleBtn');
+                btn.textContent = data.enabled ? '停止定时' : '开启定时';
+                document.getElementById('captureStatus').textContent = 
+                    data.enabled ? '运行中' : '已停止';
+            }
+        }
+
+        // 立即拍照
+        async function captureNow() {
+            const response = await fetch('/study/control', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ action: 'capture_now' })
+            });
+            if (response.ok) {
+                setTimeout(loadStudyPhotos, 1000); // 1秒后刷新
+            }
+        }
+
+        // 显示大图（需添加模态框组件）
+        function showFullImage(filename) {
+            window.open(`/static/study_records/${filename}`, '_blank');
+        }
+    </script>
+
+    <script>
+        // 状态更新定时器
+        let statusInterval = null;
+
+        // 控制番茄时钟
+        async function controlPomodoro(action) {
+            const response = await fetch('/pomodoro/control', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ action: action })
+            });
+            
+            if (action === 'start') {
+                startStatusUpdates();
+            } else if (action === 'pause') {
+                clearInterval(statusInterval);
+            }
+        }
+
+        // 启动状态轮询
+        function startStatusUpdates() {
+            clearInterval(statusInterval);
+            statusInterval = setInterval(updateStatusDisplay, 1000);
+        }
+
+        // 更新界面显示
+        async function updateStatusDisplay() {
+            const response = await fetch('/pomodoro/status');
+            const data = await response.json();
+            
+            // 时间格式化
+            const minutes = Math.floor(data.remaining / 60).toString().padStart(2, '0');
+            const seconds = (data.remaining % 60).toString().padStart(2, '0');
+            document.getElementById('timeDisplay').textContent = `${minutes}:${seconds}`;
+            
+            // 状态指示
+            const phaseMap = {
+                'working': '专注时间 🎯',
+                'break': '休息时间 ☕'
+            };
+            document.getElementById('phaseIndicator').textContent = 
+                data.status ? phaseMap[data.status] : '准备开始';
+            
+            // 统计信息
+            document.getElementById('tomatoCount').textContent = data.total_tomatoes;
+            document.getElementById('cycleCount').textContent = data.cycles;
+            
+            // 动态颜色
+            const timeDisplay = document.getElementById('timeDisplay');
+            timeDisplay.style.color = data.status === 'working' ? '#e74c3c' : '#2ecc71';
+        }
+
+        // 保存设置
+        async function saveSettings() {
+            const work = document.getElementById('workTime').value;
+            const breakTime = document.getElementById('breakTime').value;
+            
+            await fetch('/pomodoro/control', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    action: 'set_duration',
+                    work: work,
+                    break: breakTime
+                })
+            });
+            alert('设置已保存！');
+        }
+
+        // 初始加载
+        updateStatusDisplay();
     </script>
     
 </body>

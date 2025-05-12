@@ -9,6 +9,7 @@ from scripts.led import init_animation_thread,operate_led
 import pygame
 import threading
 from queue import Queue
+from apscheduler.schedulers.background import BackgroundScheduler
 
 app = Flask(__name__)
 app.config['SNAPSHOT_FOLDER'] = 'static/snapshots'
@@ -214,6 +215,173 @@ def get_music_status():
             is_playing=is_playing,
             volume=volume
         )
+
+app.config['STUDY_FOLDER'] = 'static/study_records'
+os.makedirs(app.config['STUDY_FOLDER'], exist_ok=True)
+
+# 定时任务调度器
+scheduler = BackgroundScheduler(daemon=True)
+current_interval = 5  # 默认5分钟
+capture_enabled = False
+
+def capture_study_photo(force=False):
+    """定时拍照函数"""
+    if not force:
+        if not capture_enabled:
+            return
+    
+    try:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"study_{timestamp}.jpg"
+        save_path = os.path.join(app.config['STUDY_FOLDER'], filename)
+        
+        # 使用fswebcam拍照（需安装）
+        os.system(f"fswebcam -r 1920x1080 --no-banner {save_path}")
+        
+    except Exception as e:
+        print(f"拍照失败: {str(e)}")
+
+# 初始化调度器
+scheduler.add_job(capture_study_photo, 'interval', minutes=current_interval, id='default')
+scheduler.start()
+
+@app.route('/study/control', methods=['POST'])
+def study_control():
+    """学习记录控制接口"""
+    global current_interval, capture_enabled
+    action = request.json.get('action')
+    
+    if action == 'set_interval':
+        new_interval = int(request.json.get('interval'))
+        if new_interval < 1:
+            return jsonify(success=False, error="间隔时间需大于1分钟")
+        
+        current_interval = new_interval
+        scheduler.reschedule_job(
+            'default', 
+            trigger='interval', 
+            minutes=current_interval
+        )
+        return jsonify(success=True)
+    
+    elif action == 'toggle_capture':
+        capture_enabled = not capture_enabled
+        return jsonify(success=True, enabled=capture_enabled)
+    
+    elif action == 'capture_now':
+        capture_study_photo(force=True)
+        return jsonify(success=True)
+    
+    return jsonify(success=False, error="无效操作")
+
+@app.route('/study/photos')
+def get_study_photos():
+    """获取学习记录照片列表"""
+    try:
+        photos = sorted(
+            [f for f in os.listdir(app.config['STUDY_FOLDER']) if f.endswith('.jpg')],
+            reverse=True
+        )
+        return jsonify(success=True, photos=photos)
+    except Exception as e:
+        return jsonify(success=False, error=str(e))
+
+# 番茄时钟全局状态
+pomodoro_status = {
+    "is_working": True,
+    "is_break": False,
+    "remaining": 1500,  # 默认25分钟（单位：秒）
+    "work_duration": 1500,
+    "break_duration": 300,
+    "cycles": 1,
+    "total_tomatoes": 0
+}
+
+# 定时任务调度器
+scheduler = BackgroundScheduler(daemon=True)
+scheduler.start()
+
+def update_pomodoro():
+    """更新番茄时钟状态"""
+    global pomodoro_status
+    if pomodoro_status["remaining"] > 0:
+        pomodoro_status["remaining"] -= 1
+    else:
+        handle_period_end()
+
+def handle_period_end():
+    """阶段结束处理"""
+    global pomodoro_status
+    if pomodoro_status["is_working"]:
+        # 工作时间结束，进入休息
+        pomodoro_status.update({
+            "is_working": False,
+            "is_break": True,
+            "remaining": pomodoro_status["break_duration"]
+        })
+        # 控制LED闪烁提醒
+        operate_led('on')
+        play_end()
+    else:
+        # 休息时间结束，开始新番茄
+        pomodoro_status.update({
+            "is_working": True,
+            "is_break": False,
+            "remaining": pomodoro_status["work_duration"],
+            "total_tomatoes": pomodoro_status["total_tomatoes"] + 1,
+            "cycles": pomodoro_status["cycles"] +1
+        })
+        # LED长亮提醒
+        operate_led('off')
+        play_start()
+    scheduler.resume()
+
+@app.route('/pomodoro/control', methods=['POST'])
+def pomodoro_control():
+    """番茄时钟控制接口"""
+    action = request.json.get('action')
+    
+    if action == 'start':
+        if not scheduler.get_jobs():
+            scheduler.add_job(update_pomodoro, 'interval', seconds=1, id='pomodoro')
+        scheduler.resume()
+        play_start()
+        return jsonify(success=True)
+    
+    elif action == 'pause':
+        scheduler.pause()
+        return jsonify(success=True)
+    
+    elif action == 'reset':
+        scheduler.pause()
+        pomodoro_status.update({
+            "is_working": True,
+            "is_break": False,
+            "remaining": pomodoro_status["work_duration"],
+            "cycles": 1
+        })
+        operate_led('off')
+        return jsonify(success=True)
+    
+    elif action == 'set_duration':
+        work = int(request.json.get('work')) * 60
+        break_dur = int(request.json.get('break')) * 60
+        pomodoro_status["work_duration"] = work
+        pomodoro_status["break_duration"] = break_dur
+        pomodoro_status["remaining"] = work
+        return jsonify(success=True)
+    
+    return jsonify(success=False, error="无效操作")
+
+@app.route('/pomodoro/status')
+def get_pomodoro_status():
+    """获取当前状态"""
+    return jsonify({
+        "status": "working" if pomodoro_status["is_working"] else "break",
+        "remaining": pomodoro_status["remaining"],
+        "cycles": pomodoro_status["cycles"],
+        "total_tomatoes": pomodoro_status["total_tomatoes"]
+    })
 
 if __name__ == '__main__':
     # 启动 Flask 服务器（端口 5000）
