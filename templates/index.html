@@ -81,12 +81,87 @@
             display: block;
         }
     </style>
+    <style>
+        .homework-container {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+        }
+        .pdf-preview {
+            flex: 1;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .homework-control {
+            flex: 1;
+            max-width: 400px;
+        }
+        .homework-list {
+            margin-top: 15px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .homework-item {
+            padding: 10px;
+            margin: 5px 0;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+        .homework-item.selected {
+            background: #f0faff;
+            border-left: 4px solid #2196F3;
+        }
+    </style>
+    <style>
+        .music-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .upload-section {
+            margin-bottom: 20px;
+        }
+        .control-panel {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .buttons {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .playlist {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .track-item {
+            padding: 10px;
+            margin: 5px 0;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .track-item:hover {
+            background: #e0f0ff;
+        }
+    </style>
+
 </head>
 <body>
     <!-- 选项卡导航 -->
     <div class="tab-nav">
         <button id="camerabut" class="tab-button active" onclick="switchTab('camera')">摄像头控制</button>
         <button id="ledbut" class="tab-button" onclick="switchTab('led')">LED 控制</button>
+        <button id="homeworkbut" class="tab-button" onclick="switchTab('homework')">作业提交</button>
+        <button id="musicbut"class="tab-button" onclick="switchTab('music')">音乐播放</button>
     </div>
 
     <!-- 分页内容 -->
@@ -114,6 +189,61 @@
             <button class="button" onclick="startTimer()">开始倒计时</button>
             <div id="timerDisplay" style="margin: 15px 0; font-size: 24px; color: #333;">00:00</div>
             <button class="button" onclick="manualToggleLed()">重置</button>
+        </div>
+    </div>
+
+    <div id="homeworkTab" class="tab-content">
+        <div class="homework-container">
+            <!-- 左侧：PDF预览 -->
+            <div class="pdf-preview">
+                <h3>已生成的作业PDF</h3>
+                <iframe id="pdfViewer" 
+                        src="/static/snapshots/output.pdf?t=<%= timestamp %>" 
+                        width="100%" 
+                        height="500px"></iframe>
+                <p id="pdfStatus" style="color: #666; margin-top: 10px;">
+                    PDF文件状态：<span class="status-text">加载中...</span>
+                </p>
+            </div>
+    
+    
+            <!-- 右侧：作业操作区 -->
+            <div class="homework-control">
+                <button class="button" onclick="fetchHomework()">获取未提交作业</button>
+                <div id="homeworkList" class="homework-list"></div>
+                <button class="button" onclick="submitHomework()" style="margin-top: 20px;">提交选中作业</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="musicTab" class="tab-content">
+        <div class="music-container">
+            <!-- 上传模块 -->
+            <div class="upload-section">
+                <input type="file" id="musicUpload" accept=".mp3,.wav,.ogg,.flac">
+                <button class="button" onclick="uploadMusic()">上传音乐</button>
+            </div>
+
+            <!-- 播放控制 -->
+            <div class="control-panel">
+                <div class="now-playing">
+                    <h3>当前播放：<span id="currentTrack">无</span></h3>
+                    <p>状态：<span id="playStatus">停止</span></p>
+                </div>
+                <div class="buttons">
+                    <button class="button" onclick="control('play')">▶ 播放</button>
+                    <button class="button" onclick="control('pause')">⏸ 暂停</button>
+                    <button class="button" onclick="control('stop')">⏹ 停止</button>
+                    <input type="range" id="volume" min="0" max="1" step="0.1" 
+                        value="1" oninput="setVolume(this.value)">
+                </div>
+            </div>
+
+            <!-- 播放列表 -->
+            <div class="playlist">
+                <h3>服务器音乐列表</h3>
+                <div id="musicList"></div>
+            </div>
         </div>
     </div>
 
@@ -314,5 +444,103 @@
             });
         }
     </script>
+
+    <script>
+        // 初始化加载播放列表
+        loadMusicList();
+        setInterval(updateStatus, 1000);  // 每秒更新状态
+
+        // 加载音乐列表
+        async function loadMusicList() {
+            try {
+                const response = await fetch('/music/list');
+                const data = await response.json();
+                if (data.success) {
+                    renderMusicList(data.files);
+                }
+            } catch (error) {
+                console.error('加载失败:', error);
+            }
+        }
+
+        // 渲染播放列表
+        function renderMusicList(files) {
+            const container = document.getElementById('musicList');
+            container.innerHTML = files.map(file => `
+                <div class="track-item" onclick="playTrack('${file}')">
+                    ${file}
+                </div>
+            `).join('');
+        }
+
+        // 控制指令发送
+        async function control(action, extraData = {}) {
+            console.log(action);
+            const response = await fetch('/music/control', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ action, ...extraData })
+            });
+            const data = await response.json();
+            if (!data.success) alert(data.error);
+        }
+
+        // 播放指定曲目
+        function playTrack(filename) {
+            control('play_track', { file: filename });
+        }
+
+        // 设置音量
+        async function setVolume(value) {
+            await fetch('/music/control', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ 
+                    action: 'volume',
+                    value: parseFloat(value)
+                })
+            });
+        }
+
+        // 更新播放状态
+        async function updateStatus() {
+            const response = await fetch('/music/status');
+            const data = await response.json();
+            document.getElementById('currentTrack').textContent = 
+                data.current_track || '无';
+            document.getElementById('playStatus').textContent = 
+                data.is_playing ? '播放中' : '已暂停/停止';
+            document.getElementById('volume').value = data.volume;
+        }
+
+        // 上传音乐
+        async function uploadMusic() {
+            const fileInput = document.getElementById('musicUpload');
+            if (fileInput.files.length === 0) {
+                alert('请选择音乐文件');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch('/music/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                if (data.success) {
+                    await loadMusicList();
+                    alert('上传成功！');
+                } else {
+                    alert('上传失败: ' + data.error);
+                }
+            } catch (error) {
+                alert('请求失败: ' + error.message);
+            }
+        }
+    </script>
+    
 </body>
 </html>

@@ -7,6 +7,8 @@ from threading import Thread
 import time
 from scripts.led import init_animation_thread,operate_led
 import pygame
+import threading
+from queue import Queue
 
 app = Flask(__name__)
 app.config['SNAPSHOT_FOLDER'] = 'static/snapshots'
@@ -100,6 +102,118 @@ def play_start():
 def play_end():
     pygame.mixer.music.load("static/sounds/timer_end.mp3")
     pygame.mixer.music.play()
+
+
+app.config['MUSIC_FOLDER'] = 'static/music'
+app.config['ALLOWED_EXT'] = {'mp3', 'wav', 'ogg', 'flac'}
+os.makedirs(app.config['MUSIC_FOLDER'], exist_ok=True)
+
+# Pygame音乐控制全局变量
+pygame.mixer.init()
+current_track = None
+playlist = []
+player_queue = Queue()
+is_playing = False
+volume = 1.0
+lock = threading.Lock()
+
+def music_player_daemon():
+    """音乐播放守护线程"""
+    global current_track, is_playing
+    while True:
+        if not player_queue.empty():
+            with lock:
+                current_track = player_queue.get()
+                pygame.mixer.music.load(current_track['path'])
+                pygame.mixer.music.play()
+                is_playing = True
+                
+        if is_playing and not pygame.mixer.music.get_busy():
+            with lock:
+                is_playing = False
+        time.sleep(1)
+
+# 启动守护线程
+threading.Thread(target=music_player_daemon, daemon=True).start()
+
+@app.route('/music/upload', methods=['POST'])
+def upload_music():
+    """上传音乐文件到服务器"""
+    if 'file' not in request.files:
+        return jsonify(success=False, error="未选择文件")
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify(success=False, error="空文件名")
+    
+    if file and allowed_file(file.filename):
+        # filename = secure_filename(file.filename)
+        filename = file.filename
+        file_path = os.path.join(app.config['MUSIC_FOLDER'], filename)
+        file.save(file_path)
+        return jsonify(success=True, filename=filename)
+    
+    return jsonify(success=False, error="不支持的文件类型")
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXT']
+
+@app.route('/music/list')
+def get_music_list():
+    """获取服务器音乐列表"""
+    try:
+        files = [f for f in os.listdir(app.config['MUSIC_FOLDER']) 
+                if f.split('.')[-1] in app.config['ALLOWED_EXT']]
+        return jsonify(success=True, files=files)
+    except Exception as e:
+        return jsonify(success=False, error=str(e))
+
+@app.route('/music/control', methods=['POST'])
+def control_music():
+    """音乐播放控制接口"""
+    global is_playing, volume
+    action = request.json.get('action')
+    
+    with lock:
+        if action == 'play':
+            if not pygame.mixer.music.get_busy():
+                if current_track:
+                    pygame.mixer.music.unpause()
+                else:
+                    return jsonify(success=False, error="无可用曲目")
+            is_playing = True
+        elif action == 'pause':
+            pygame.mixer.music.pause()
+            is_playing = False
+        elif action == 'stop':
+            pygame.mixer.music.stop()
+            is_playing = False
+        elif action == 'volume':
+            volume = max(0.0, min(1.0, float(request.json.get('value', 1.0))))
+            pygame.mixer.music.set_volume(volume)
+        elif action == 'play_track':
+            filename = request.json.get('file')
+            filepath = os.path.join(app.config['MUSIC_FOLDER'], filename)
+            if not os.path.exists(filepath):
+                return jsonify(success=False, error="文件不存在")
+            player_queue.put({'path': filepath, 'name': filename})
+        elif action == 'next':
+            pass  # 需要实现播放队列逻辑
+        else:
+            return jsonify(success=False, error="无效操作")
+            
+    return jsonify(success=True)
+
+@app.route('/music/status')
+def get_music_status():
+    """获取当前播放状态"""
+    with lock:
+        return jsonify(
+            current_track=current_track['name'] if current_track else None,
+            is_playing=is_playing,
+            volume=volume
+        )
 
 if __name__ == '__main__':
     # 启动 Flask 服务器（端口 5000）
