@@ -1,4 +1,4 @@
-from flask import Flask, render_template, send_file, jsonify, request, send_from_directory
+from flask import Flask, render_template, send_file, jsonify, request, send_from_directory, session
 import os
 from datetime import datetime
 import requests
@@ -12,11 +12,13 @@ from queue import Queue
 from PIL import Image
 from apscheduler.schedulers.background import BackgroundScheduler
 from io import BytesIO
+from scripts.edu import wlxt_login, wlxt_get_homework
 
 
 app = Flask(__name__)
 app.config['SNAPSHOT_FOLDER'] = 'static/snapshots'
 os.makedirs(app.config['SNAPSHOT_FOLDER'], exist_ok=True)
+app.secret_key = 'loveforever'
 
 pygame.mixer.init()
 
@@ -103,12 +105,14 @@ def toggle_led():
 def play_start():
     pygame.mixer.music.load("static/sounds/timer_start.mp3")
     pygame.mixer.music.play()
+    return jsonify(success=True)
+
 
 @app.route('/play_timer_end', methods=['POST'])
 def play_end():
     pygame.mixer.music.load("static/sounds/timer_end.mp3")
     pygame.mixer.music.play()
-
+    return jsonify(success=True)
 
 app.config['MUSIC_FOLDER'] = 'static/music'
 app.config['ALLOWED_EXT'] = {'mp3', 'wav', 'ogg', 'flac'}
@@ -388,6 +392,69 @@ def get_pomodoro_status():
         "total_tomatoes": pomodoro_status["total_tomatoes"]
     })
 
-if __name__ == '__main__':
-    # 启动 Flask 服务器（端口 5000）
-    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
+
+@app.route('/edu/login', methods=['POST'])
+def edu_login():
+    """网络学堂登录接口"""
+    try:
+        username = request.json.get('username')
+        password = request.json.get('password')
+        
+        cookie,csrf,semaster = wlxt_login(username,password)
+
+        # 保存session信息
+        session['edu_cookies'] = (cookie,csrf,semaster)
+        return jsonify(success=True)
+        
+    except Exception as e:
+        return jsonify(success=False, error=str(e))
+
+@app.route('/edu/assignments')
+def get_assignments():
+    """获取未提交作业列表"""
+    try:
+        if 'edu_cookies' not in session:
+            return jsonify(success=False, error="未登录")
+            
+        homework_list = wlxt_get_homework(*session['edu_cookies'])
+        
+        return jsonify(success=True, assignments=homework_list)
+        
+    except Exception as e:
+        return jsonify(success=False, error=str(e))
+
+@app.route('/edu/submit', methods=['POST'])
+def submit_assignment():
+    """提交作业接口"""
+    try:
+        if 'edu_cookies' not in session:
+            return jsonify(success=False, error="未登录")
+            
+        assignment_id = request.form.get('assignment_id')
+        file = request.files.get('file')
+        
+        # 模拟提交操作
+        s = requests.Session()
+        s.cookies.update(session['edu_cookies'])
+        
+        # 获取提交表单参数
+        submit_page = s.get(f"{ASSIGNMENT_URL}/{assignment_id}/submit")
+        token = re.search(r'name="csrf_token" value="(.*?)"', submit_page.text).group(1)
+        
+        # 构建提交数据
+        files = {'file': (file.filename, file.stream, file.mimetype)}
+        data = {'csrf_token': token}
+        
+        res = s.post(f"{ASSIGNMENT_URL}/submit", 
+                    data=data, 
+                    files=files)
+        
+        if "提交成功" not in res.text:
+            return jsonify(success=False, error="提交失败")
+            
+        return jsonify(success=True)
+        
+    except Exception as e:
+        return jsonify(success=False, error=str(e))
+if __name__ == '__main__': # 启动 Flask 服务器（端口 5000）
+    app.run(host='0.0.0.0', port=21000, debug=True, use_reloader=False)

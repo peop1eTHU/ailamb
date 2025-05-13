@@ -99,6 +99,77 @@
         .tab-content.active {
             display: block;
         }
+
+
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+        }
+
+        /* 竖屏视频预览区 */
+        .preview-section {
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            height: 720px;
+        }
+        #videoFeed {
+            width: 100%;
+            height: 70%;
+            transform: rotate(90deg) scale(1.4); /* 关键旋转代码 */
+            transform-origin: center;
+            object-fit: cover;
+        }
+
+        /* 控制按钮组 */
+        .controls {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .btn {
+            padding: 12px 24px;
+            margin: 0 10px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            background: #45a049;
+            transform: scale(1.05);
+        }
+
+        /* 缩略图列表 */
+        .thumbnails {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+            max-height: 720px;
+            overflow-y: auto;
+        }
+        .thumbnail-item {
+            margin-bottom: 15px;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+        .thumbnail-item.active {
+            border-color: #4CAF50;
+        }
+        .thumbnail-img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 5px;
+        }
+
     </style>
     <style>
         .homework-container {
@@ -306,20 +377,25 @@
 
     <!-- 分页内容 -->
     <div id="cameraTab" class="tab-content active">
-        <!-- 原有摄像头控制内容 -->
-        <div class="left-panel">
-            <!-- <div class="vertical-container"> -->
-                <img id="videoStream" src="http://192.168.3.62:8080/?action=stream">
-            <!-- </div> -->
-            <div>
-                <button class="button" onclick="captureSnapshot()">拍照</button>
-                <button class="button" onclick="downloadPDF()">生成PDF</button>
+
+        <div class="container">
+            <!-- 左侧主操作区 -->
+            <div class="preview-section">
+                <img id="videoFeed" src="http://192.168.3.62:8080/?action=stream">
             </div>
-            <img id="latestSnapshot" src="#" alt="最新快照" style="display: none;">
-        </div>
-        <div class="right-panel">
-            <h3>已拍摄的快照</h3>
-            <div class="snapshot-list" id="snapshotList"></div>
+
+            <!-- 右侧控制面板 -->
+            <div class="control-panel">
+                <div class="controls">
+                    <button class="btn" onclick="captureSnapshot()">拍摄</button>
+                    <button class="btn" onclick="downloadPDF()">生成PDF</button>
+                </div>
+
+                <div class="thumbnails">
+                    <h3>已拍摄的快照</h3>
+                    <div class="snapshot-list" id="snapshotList"></div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -370,26 +446,116 @@
         </div>
     </div>
 
+    <style>
+        .edu-container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 30px;
+            height: 80vh;
+        }
+
+        .preview-pane {
+            background: #f0f0f0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .operation-pane {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .login-box {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .form-group {
+            margin: 15px 0;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .assignment-list {
+            flex: 1;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .assignment-item {
+            padding: 15px;
+            margin: 10px 0;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .assignment-item:hover {
+            background: #f8f9fa;
+            transform: translateX(5px);
+        }
+
+        .assignment-item.selected {
+            border-color: #4CAF50;
+            background: #f0fff4;
+        }
+    </style>
+
     <div id="homeworkTab" class="tab-content">
-        <div class="homework-container">
-            <!-- 左侧：PDF预览 -->
-            <div class="pdf-preview">
-                <h3>已生成的作业PDF</h3>
-                <iframe id="pdfViewer" 
-                        src="/static/snapshots/output.pdf?t=<%= timestamp %>" 
-                        width="100%" 
-                        height="500px"></iframe>
-                <p id="pdfStatus" style="color: #666; margin-top: 10px;">
-                    PDF文件状态：<span class="status-text">加载中...</span>
-                </p>
+        <div class="edu-container">
+            <!-- 左侧PDF预览 -->
+            <div class="preview-pane">
+                <iframe id="pdfPreview" 
+                    src="/static/snapshots/output.pdf"
+                    width="100%" 
+                    height="600px"></iframe>
             </div>
-    
-    
-            <!-- 右侧：作业操作区 -->
-            <div class="homework-control">
-                <button class="button" onclick="fetchHomework()">获取未提交作业</button>
-                <div id="homeworkList" class="homework-list"></div>
-                <button class="button" onclick="submitHomework()" style="margin-top: 20px;">提交选中作业</button>
+
+            <!-- 右侧操作区 -->
+            <div class="operation-pane">
+                <!-- 登录区域 -->
+                <div class="login-box">
+                    <h3>网络学堂登录</h3>
+                    <div class="form-group">
+                        <label>用户名：</label>
+                        <input type="text" id="eduUser" placeholder="学号/邮箱">
+                    </div>
+                    <div class="form-group">
+                        <label>密码：</label>
+                        <input type="password" id="eduPass">
+                    </div>
+                    <button class="btn" onclick="eduLogin()">登录</button>
+                    <div id="loginStatus"></div>
+                </div>
+
+                <!-- 作业列表 -->
+                <div class="assignment-list" id="assignmentList">
+                    <h3>未提交作业</h3>
+                    <div class="list-container"></div>
+                </div>
+
+                <!-- 提交操作 -->
+                <div class="submit-box">
+                    <button class="btn" onclick="submitAssignment()">提交选中作业</button>
+                    <div id="submitStatus"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -914,6 +1080,106 @@
 
         // 初始加载
         updateStatusDisplay();
+    </script>
+
+    <!-- 提交脚本 -->
+    <script>
+        let currentAssignment = null;
+
+        // 网络学堂登录
+        async function eduLogin() {
+            const username = document.getElementById('eduUser').value;
+            const password = document.getElementById('eduPass').value;
+            
+            const response = await fetch('/edu/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ username, password })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                showLoginStatus('登录成功', 'success');
+                loadAssignments();
+            } else {
+                showLoginStatus(`登录失败: ${data.error}`, 'error');
+            }
+        }
+
+        // 加载作业列表
+        async function loadAssignments() {
+            const response = await fetch('/edu/assignments');
+            const data = await response.json();
+            
+            if (data.success) {
+                renderAssignments(data.assignments);
+            } else {
+                showLoginStatus(`获取作业失败: ${data.error}`, 'error');
+            }
+        }
+
+        // 渲染作业列表
+        function renderAssignments(assignments) {
+            const container = document.querySelector('#assignmentList .list-container');
+            container.innerHTML = assignments.map(assn => `
+                <div class="assignment-item" 
+                    onclick="selectAssignment('${assn.xszyid}', this)"
+                    data-id="${assn.xszyid}">
+                    <h4>${assn.bt}</h4>
+                    <p>课程：${assn.kcm}</p>
+                    <p>截止时间：${assn.jzsjStr}</p>
+                </div>
+            `).join('');
+        }
+
+        // 选择作业
+        function selectAssignment(id, element) {
+            currentAssignment = id;
+            document.querySelectorAll('.assignment-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            element.classList.add('selected');
+        }
+
+        // 提交作业
+        async function submitAssignment() {
+            if (!currentAssignment) {
+                showSubmitStatus('请先选择作业', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('assignment_id', currentAssignment);
+
+            try {
+                const response = await fetch('/edu/submit', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSubmitStatus('提交成功', 'success');
+                } else {
+                    showSubmitStatus(`提交失败: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showSubmitStatus(`请求失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 状态提示函数
+        function showLoginStatus(msg, type) {
+            const el = document.getElementById('loginStatus');
+            el.textContent = msg;
+            el.className = `status-${type}`;
+        }
+
+        function showSubmitStatus(msg, type) {
+            const el = document.getElementById('submitStatus');
+            el.textContent = msg;
+            el.className = `status-${type}`;
+        }
     </script>
     
 </body>
