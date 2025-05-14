@@ -363,6 +363,79 @@
         }
     </style>
 
+
+    <style>
+        .edu-container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 30px;
+            height: 80vh;
+        }
+
+        .preview-pane {
+            background: #f0f0f0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .operation-pane {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .login-box {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .form-group {
+            margin: 15px 0;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .assignment-list {
+            flex: 1;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .assignment-item {
+            padding: 15px;
+            margin: 10px 0;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .assignment-item:hover {
+            background: #f8f9fa;
+            transform: translateX(5px);
+        }
+
+        .assignment-item.selected {
+            border-color: #4CAF50;
+            background: #f0fff4;
+        }
+    </style>
+
 </head>
 <body>
     <!-- 选项卡导航 -->
@@ -446,77 +519,6 @@
         </div>
     </div>
 
-    <style>
-        .edu-container {
-            display: grid;
-            grid-template-columns: 1fr 400px;
-            gap: 30px;
-            height: 80vh;
-        }
-
-        .preview-pane {
-            background: #f0f0f0;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .operation-pane {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .login-box {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .form-group {
-            margin: 15px 0;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            color: #666;
-        }
-
-        .form-group input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-
-        .assignment-list {
-            flex: 1;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .assignment-item {
-            padding: 15px;
-            margin: 10px 0;
-            border: 1px solid #eee;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .assignment-item:hover {
-            background: #f8f9fa;
-            transform: translateX(5px);
-        }
-
-        .assignment-item.selected {
-            border-color: #4CAF50;
-            background: #f0fff4;
-        }
-    </style>
 
     <div id="homeworkTab" class="tab-content">
         <div class="edu-container">
@@ -1086,6 +1088,8 @@
     <script>
         let currentAssignment = null;
 
+        var currentHomeworkList = null;
+
         // 网络学堂登录
         async function eduLogin() {
             const username = document.getElementById('eduUser').value;
@@ -1111,6 +1115,7 @@
             const response = await fetch('/edu/assignments');
             const data = await response.json();
             
+            currentHomeworkList = data.assignments;
             if (data.success) {
                 renderAssignments(data.assignments);
             } else {
@@ -1149,7 +1154,8 @@
             }
 
             const formData = new FormData();
-            formData.append('assignment_id', currentAssignment);
+            const nowAssignment=currentHomeworkList.find(item=>item.xszyid===currentAssignment);
+            formData.append('assignment', JSON.stringify(nowAssignment));
 
             try {
                 const response = await fetch('/edu/submit', {

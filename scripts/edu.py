@@ -1,3 +1,4 @@
+import json
 from bs4 import BeautifulSoup
 import re
 from selenium import webdriver
@@ -7,10 +8,18 @@ import time
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import requests
+from selenium.webdriver.chrome.options import Options
+
+options = Options()
+options.add_argument('--headless')           # 无头模式
+options.add_argument('--disable-gpu')        # 关闭GPU（有些版本的Chrome需要）
+options.add_argument('--no-sandbox')         # 在root用户下运行Chrome时需要
+options.add_argument('--disable-dev-shm-usage')  # 避免/dev/shm空间不足
+
 
 def wlxt_login(username,password):
 
-    driver = webdriver.Chrome()
+    driver = webdriver.Chrome(options=options)
 
     driver.get("https://learn.tsinghua.edu.cn/f/login")
 
@@ -47,7 +56,6 @@ def wlxt_login(username,password):
     index_url = "https://learn.tsinghua.edu.cn/f/wlxt/index/course/student/"
 
     response = requests.get(index_url, cookies=cookie_dict)
-    print(response.text)
     soup = BeautifulSoup(response.text, "html.parser")
 # 找到含有 csrf 的 input 元素
     input_tag = soup.find("input", {"id": "up-btn-ok"})
@@ -113,5 +121,53 @@ def wlxt_get_homework(cookie_dict, csrf_token, semester):
 
     return hw_list
 
-def wlxt_send_homework(cookie_dict, csrf_token, hw):
-    pass
+def wlxt_send_homework(cookie_dict, csrf_token, semester, hw, filepath):
+
+    print(hw)
+    hw = json.loads(hw)
+
+    print(cookie_dict)
+    driver = webdriver.Chrome()
+
+
+    url = "https://learn.tsinghua.edu.cn/f/wlxt/kczy/zy/student/viewZy?"+\
+        "wlkcid="+hw['wlkcid']+\
+        "&zyid="+hw['zyid']+\
+        "&xszyid="+hw['xszyid']+"&sfgq=0"
+    print(url)
+    driver.get(url)
+
+    for key in cookie_dict:
+        driver.add_cookie({'name':key,'value':cookie_dict[key]})
+
+    driver.refresh()
+    
+    WebDriverWait(driver,10).until(
+        EC.visibility_of_element_located((By.ID, "saveBtn"))
+    )
+    print("saveBtn found")
+    submit_button = driver.find_element(By.ID, "saveBtn")
+    submit_button.click()
+    WebDriverWait(driver,10).until(
+        EC.presence_of_element_located((By.ID, "fileupload"))
+    )
+
+    print("fileupload found")
+    upload_input = driver.find_element(By.ID, "fileupload")
+
+    print("uploading",filepath)
+    upload_input.send_keys(filepath)
+
+    exit()
+
+    time.sleep(1)
+
+    submit_file_button = driver.find_element(By.XPATH, '//input[@value="提交"]')
+
+    submit_file_button.click()
+
+    exit()
+
+# 关闭浏览器（也可以保留，用于后续操作）
+    driver.quit()
+

@@ -12,7 +12,7 @@ from queue import Queue
 from PIL import Image
 from apscheduler.schedulers.background import BackgroundScheduler
 from io import BytesIO
-from scripts.edu import wlxt_login, wlxt_get_homework
+from scripts.edu import wlxt_login, wlxt_get_homework, wlxt_send_homework
 
 
 app = Flask(__name__)
@@ -430,27 +430,11 @@ def submit_assignment():
         if 'edu_cookies' not in session:
             return jsonify(success=False, error="未登录")
             
-        assignment_id = request.form.get('assignment_id')
-        file = request.files.get('file')
-        
-        # 模拟提交操作
-        s = requests.Session()
-        s.cookies.update(session['edu_cookies'])
-        
-        # 获取提交表单参数
-        submit_page = s.get(f"{ASSIGNMENT_URL}/{assignment_id}/submit")
-        token = re.search(r'name="csrf_token" value="(.*?)"', submit_page.text).group(1)
-        
-        # 构建提交数据
-        files = {'file': (file.filename, file.stream, file.mimetype)}
-        data = {'csrf_token': token}
-        
-        res = s.post(f"{ASSIGNMENT_URL}/submit", 
-                    data=data, 
-                    files=files)
-        
-        if "提交成功" not in res.text:
-            return jsonify(success=False, error="提交失败")
+        assignment = request.form.get('assignment')
+
+        pdf_output = os.path.abspath(os.path.join(app.config['SNAPSHOT_FOLDER'], "output.pdf"))
+        print(pdf_output)
+        wlxt_send_homework(session['edu_cookies'][0],session['edu_cookies'][1],session['edu_cookies'][2],assignment,pdf_output)
             
         return jsonify(success=True)
         
