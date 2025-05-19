@@ -11,7 +11,7 @@ def f(r,g,b,t):
 
 def play():
     print("我是奶龙")
-    pygame.mixer.music.set_volume(0.05)
+    pygame.mixer.music.set_volume(1.0)
     pygame.mixer.music.load("static/sounds/milk.mp3")
     pygame.mixer.music.play()
 
@@ -48,8 +48,9 @@ def play():
         f(80,232,41,0.28)
         f(232,41,93,0.28)
 
-    f(253,160,0,2.5)
+    f(253,160,0,2.3)
 
+    pygame.mixer.music.stop()
 
 if __name__ == '__main__':
     pygame.mixer.init()
