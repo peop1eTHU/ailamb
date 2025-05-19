@@ -13,6 +13,7 @@
         <button id="pomodorobut" class="tab-button" onclick="switchTab('pomodoro')">番茄时钟</button>    
         <button id="musicbut" class="tab-button" onclick="switchTab('music')">音乐播放</button>
         <button id="studybut" class="tab-button" onclick="switchTab('study')">学习记录</button>
+        <button id="eggbut" class="tab-button" onclick="switchTab('egg')">　　　　</button>
     </div>
 
     <!-- 分页内容 -->
@@ -186,6 +187,11 @@
                 <div id="photoGrid" class="photo-grid"></div>
             </div>
         </div>
+    </div>
+
+    <div id="eggTab" class="tab-content">
+        <h1>小剧场</h1>
+            <button class="button" onclick="playMilk()">start</button>
     </div>
 
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>

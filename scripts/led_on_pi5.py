@@ -42,6 +42,7 @@ playing = True
 # stop_event = threading.Event()
 lock = threading.Lock()
 animation_thread = None
+milking = False
 
 def start():
     global playing
@@ -61,7 +62,9 @@ def play_animation():
     # while not stop_event.is_set():
     while True:
         with lock:
-            if playing:
+            if milking:
+                pass
+            elif playing:
                 animations.animate()
             else:
                 pixels.fill((255,255,255))
@@ -81,3 +84,10 @@ def operate_led(state):
         start()
     else:
         pause()
+
+def sc(r,g,b):
+    global milking
+    milking = True
+    print("setting color")
+    pixels.fill((b,r,g))
+    pixels.show()

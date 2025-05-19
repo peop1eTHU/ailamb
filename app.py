@@ -5,7 +5,7 @@ import requests
 from fpdf import FPDF
 from threading import Thread
 import time
-from scripts.led import init_animation_thread,operate_led
+from scripts.led_on_pi5 import init_animation_thread,operate_led
 import pygame
 import threading
 from queue import Queue
@@ -13,7 +13,7 @@ from PIL import Image
 from apscheduler.schedulers.background import BackgroundScheduler
 from io import BytesIO
 from scripts.edu import wlxt_login, wlxt_get_homework, wlxt_send_homework
-
+import scripts.milkdragon
 
 app = Flask(__name__)
 app.config['SNAPSHOT_FOLDER'] = 'static/snapshots'
@@ -440,5 +440,18 @@ def submit_assignment():
         
     except Exception as e:
         return jsonify(success=False, error=str(e))
+
+@app.route('/play-milk', methods=['POST'])
+def play_milk():
+    """网络学堂登录接口"""
+    try:
+        
+        scripts.milkdragon.play()
+        
+        return jsonify(success=True)
+        
+    except Exception as e:
+        return jsonify(success=False, error=str(e))
+
 if __name__ == '__main__': # 启动 Flask 服务器（端口 5000）
     app.run(host='0.0.0.0', port=21000, debug=True, use_reloader=False)

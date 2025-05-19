@@ -562,3 +562,13 @@ function showSubmitStatus(msg, type) {
     el.textContent = msg;
     el.className = `status-${type}`;
 }
+
+async function playMilk() {
+    
+    await fetch('/play-milk', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ })
+    });
+    
+}
