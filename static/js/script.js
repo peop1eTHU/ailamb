@@ -425,8 +425,8 @@ async function updateStatusDisplay() {
     
     // 状态指示
     const phaseMap = {
-        'working': '专注时间 🎯',
-        'break': '休息时间 ☕'
+        'working': '专注时间',
+        'break': '休息时间'
     };
     document.getElementById('phaseIndicator').textContent = 
         data.status ? phaseMap[data.status] : '准备开始';
@@ -437,7 +437,7 @@ async function updateStatusDisplay() {
     
     // 动态颜色
     const timeDisplay = document.getElementById('timeDisplay');
-    timeDisplay.style.color = data.status === 'working' ? '#e74c3c' : '#2ecc71';
+    timeDisplay.style.color = data.status === 'working' ? '#e9bb1d' : '#2ecc71';
 }
 
 // 保存设置
