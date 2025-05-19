@@ -9,6 +9,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import requests
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+
+service = Service("/usr/bin/chromedriver")
 
 options = Options()
 options.add_argument('--headless')           # 无头模式
@@ -19,7 +22,7 @@ options.add_argument('--disable-dev-shm-usage')  # 避免/dev/shm空间不足
 
 def wlxt_login(username,password):
 
-    driver = webdriver.Chrome(options=options)
+    driver = webdriver.Chrome(options=options, service=service)
 
     driver.get("https://learn.tsinghua.edu.cn/f/login")
 
@@ -127,7 +130,7 @@ def wlxt_send_homework(cookie_dict, csrf_token, semester, hw, filepath):
     hw = json.loads(hw)
 
     print(cookie_dict)
-    driver = webdriver.Chrome(options=options)
+    driver = webdriver.Chrome(options=options, service=service)
 
 
     url = "https://learn.tsinghua.edu.cn/f/wlxt/kczy/zy/student/viewZy?"+\
