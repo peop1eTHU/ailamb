@@ -127,7 +127,7 @@ def wlxt_send_homework(cookie_dict, csrf_token, semester, hw, filepath):
     hw = json.loads(hw)
 
     print(cookie_dict)
-    driver = webdriver.Chrome()
+    driver = webdriver.Chrome(options=options)
 
 
     url = "https://learn.tsinghua.edu.cn/f/wlxt/kczy/zy/student/viewZy?"+\
@@ -158,16 +158,24 @@ def wlxt_send_homework(cookie_dict, csrf_token, semester, hw, filepath):
     print("uploading",filepath)
     upload_input.send_keys(filepath)
 
-    exit()
 
-    time.sleep(1)
-
+    WebDriverWait(driver,10).until(
+        EC.presence_of_element_located((By.XPATH, "//*[contains(text(), '删除')]"))
+    )
+    print("delete found")
     submit_file_button = driver.find_element(By.XPATH, '//input[@value="提交"]')
 
     submit_file_button.click()
+    print("waiting")
+    try:
+        # 等待最多10秒，直到包含“作业提交成功”的元素出现在页面上
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, "//*[contains(text(), '提交作业成功')]"))
+        )
+        print("作业提交成功提示已出现！")
+    except:
+        print("超时未出现提交成功提示")
+    finally:
+        driver.quit()
 
-    exit()
-
-# 关闭浏览器（也可以保留，用于后续操作）
-    driver.quit()
 
